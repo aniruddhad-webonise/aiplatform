@@ -4,7 +4,7 @@
     "agents": {
         "chat": {
             "type": "chat",
-            "model": "gpt-4",
+            "model": "gpt-4o",
             "temperature": 0.2,
             "additional_params": {
                 "system_prompt": "You are a helpful AI assistant. Provide clear, concise, and accurate responses to the user's questions."
@@ -19,6 +19,44 @@
                     "type": "sqlite",
                     "connection_details": {
                         "database": "example.db"
+                    }
+                },
+                "schema_config": {
+                    "schema_prefix": "public",
+                    "tables": [
+                        "users",
+                        "products",
+                        "orders"
+                    ],
+                    "table_mappings": {
+                        "users": "users",
+                        "products": "products",
+                        "orders": "orders"
+                    },
+                    "column_mappings": {
+                        "users": {
+                            "name": "name",
+                            "email": "email",
+                            "created_at": "created_at"
+                        },
+                        "products": {
+                            "name": "name",
+                            "price": "price",
+                            "category": "category"
+                        },
+                        "orders": {
+                            "user": "user_id",
+                            "product": "product_id",
+                            "quantity": "quantity",
+                            "total": "total_amount",
+                            "date": "order_date"
+                        }
+                    },
+                    "data_type_rules": {
+                        "integer_columns": ["user_id", "product_id", "quantity"],
+                        "text_columns": ["name", "email", "category"],
+                        "numeric_columns": ["price", "total_amount"],
+                        "date_columns": ["created_at", "order_date"]
                     }
                 }
             }

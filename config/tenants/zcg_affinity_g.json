@@ -1,0 +1,173 @@
+{
+    "tenant_id": "zcg_affinity_g",
+    "name": "ZCG Affinity Gaming",
+    "description": "ZCG Affinity Gaming tenant",
+    "agents": {
+        "chat": {
+            "type": "chat",
+            "model": "gpt-4o",
+            "temperature": 0.2,
+            "additional_params": {
+                "system_prompt": "You are a helpful AI assistant specialized in financial data analysis for Affinity Gaming. You can help users query financial data, analyze trends, and provide insights about gaming operations, revenue, and financial metrics."
+            }
+        },
+        "sql": {
+            "type": "sql",
+            "model": "gpt-4o",
+            "temperature": 0.0,
+            "additional_params": {
+                "mcp_server": {
+                    "type": "postgresql",
+                    "connection_details": {
+                        "database_url": "${ZCG_AFFINITY_G_DB_URL}",
+                        "schema": "affinity_gaming"
+                    }
+                },
+                "schema_config": {
+                    "schema_prefix": "affinity_gaming",
+                    "tables": [
+                        "affinity_gaming.affinity_gaming_13_week_cashflow",
+                        "affinity_gaming.affinity_gaming_balance_sheet",
+                        "affinity_gaming.affinity_gaming_cash_flow",
+                        "affinity_gaming.affinity_gaming_entity_config_data",
+                        "affinity_gaming.affinity_gaming_entity_period_config_data",
+                        "affinity_gaming.affinity_gaming_gl_config_data",
+                        "affinity_gaming.affinity_gaming_net_working_capital",
+                        "affinity_gaming.affinity_gaming_period_config_data",
+                        "affinity_gaming.affinity_gaming_profit_and_loss",
+                        "affinity_gaming.affinity_gaming_profit_and_loss_staged",
+                        "affinity_gaming.affinity_gaming_report_config_data",
+                        "affinity_gaming.affinity_gaming_revenue_wtd",
+                        "affinity_gaming.affinity_gaming_thirteen_week_cash_flow"
+                    ],
+                    "views": [
+                        "affinity_gaming.affinity_gaming_target_trial_balance",
+                        "affinity_gaming.affinity_gaming_trial_balances_cpl",
+                        "affinity_gaming.affinity_gaming_trial_balances_fla",
+                        "affinity_gaming.affinity_gaming_trial_balances_hgi",
+                        "affinity_gaming.affinity_gaming_trial_balances_hlk",
+                        "affinity_gaming.affinity_gaming_trial_balances_hmt",
+                        "affinity_gaming.affinity_gaming_trial_balances_hsj",
+                        "affinity_gaming.affinity_gaming_trial_balances_prm"
+                    ],
+                    "table_mappings": {
+                        "profit and loss": "affinity_gaming.affinity_gaming_profit_and_loss",
+                        "balance sheet": "affinity_gaming.affinity_gaming_balance_sheet",
+                        "cash flow": "affinity_gaming.affinity_gaming_cash_flow",
+                        "13 week cashflow": "affinity_gaming.affinity_gaming_13_week_cashflow",
+                        "thirteen week cash flow": "affinity_gaming.affinity_gaming_thirteen_week_cash_flow",
+                        "net working capital": "affinity_gaming.affinity_gaming_net_working_capital",
+                        "revenue wtd": "affinity_gaming.affinity_gaming_revenue_wtd",
+                        "trial balance": "affinity_gaming.affinity_gaming_target_trial_balance"
+                    },
+                    "column_mappings": {
+                        "affinity_gaming.affinity_gaming_profit_and_loss": {
+                            "metric": "metric_name",
+                            "ending balance": "ending_balance",
+                            "month": "month",
+                            "year": "year",
+                            "entity": "entity_name",
+                            "entity code": "entity_code",
+                            "location": "location_id",
+                            "gl name": "gl_name",
+                            "gl number": "gl_number",
+                            "actual mtd": "actual_mtd",
+                            "actual ytd": "actual_ytd",
+                            "actual ttm": "actual_ttm",
+                            "previous year ending balance": "py_ending_balance",
+                            "previous year mtd": "py_actual_mtd",
+                            "previous year ytd": "py_actual_ytd",
+                            "previous year ttm": "py_actual_ttm"
+                        },
+                        "affinity_gaming.affinity_gaming_cash_flow": {
+                            "entity": "entity_name",
+                            "entity code": "entity_code",
+                            "location": "location_id",
+                            "gl name": "gl_name",
+                            "gl number": "gl_number",
+                            "mtd": "mtd",
+                            "ytd": "ytd",
+                            "ttm": "ttm",
+                            "month": "month",
+                            "year": "year",
+                            "period": "period"
+                        },
+                        "affinity_gaming.affinity_gaming_balance_sheet": {
+                            "entity": "entity_name",
+                            "entity code": "entity_code",
+                            "location": "location_id",
+                            "gl name": "gl_name",
+                            "gl number": "gl_number",
+                            "ending balance": "ending_balance",
+                            "month": "month",
+                            "year": "year",
+                            "period": "period",
+                            "category": "category_name",
+                            "subcategory": "subcategory_name"
+                        },
+                        "affinity_gaming.affinity_gaming_13_week_cashflow": {
+                            "entity": "entity_name",
+                            "entity code": "entity_code",
+                            "location": "location_id",
+                            "gl name": "gl_name",
+                            "gl number": "gl_number",
+                            "wtd": "wtd",
+                            "month": "month",
+                            "year": "year",
+                            "date": "date",
+                            "category": "category_name"
+                        }
+                    },
+                    "metric_mappings": {
+                        "Gross Profit": "Gross Profit",
+                        "Revenue": "Revenue",
+                        "Expenses": "Expenses",
+                        "Net Income": "Net Income",
+                        "EBITDA": "EBITDA",
+                        "Operating Income": "Operating Income"
+                    },
+                    "data_type_rules": {
+                        "integer_columns": ["month", "year", "gl_number", "location_id", "entity_id"],
+                        "text_columns": ["entity_name", "entity_code", "gl_name", "metric_name", "category_name"],
+                        "numeric_columns": ["ending_balance", "mtd", "ytd", "ttm", "wtd", "actual_mtd", "actual_ytd", "actual_ttm"]
+                    }
+                }
+            }
+        }
+    },
+    "workflows": {},
+    "routing_rules": [
+        {
+            "pattern": "(?i).*(show|list|find|get|select|query|search|display|fetch|retrieve|count|sum|total|amount|price|cost|less than|more than|between|where|from|balance|sheet|cash|flow|revenue|profit|loss|trial|balance|working|capital|entity|period|gl|config|data|records?|entries?).*",
+            "agent": "sql",
+            "priority": 1
+        },
+        {
+            "pattern": ".*",
+            "agent": "chat",
+            "priority": 0
+        }
+    ],
+    "routing_config": {
+        "agent_rules": {
+            "sql": {
+                "keywords": [
+                    "show", "list", "find", "get", "select", "query", "search", "display", "fetch", "retrieve",
+                    "count", "sum", "total", "amount", "price", "cost", "less than", "more than", "between",
+                    "where", "from", "balance", "sheet", "cash", "flow", "revenue", "profit", "loss", "trial",
+                    "balance", "working", "capital", "entity", "period", "gl", "config", "data", "records",
+                    "entries", "13 week", "thirteen week", "wtd", "mtd", "ytd", "ttm", "ending balance",
+                    "beginning balance", "period balance", "debit", "credit", "profit and loss", "cap structure",
+                    "capital structure", "report", "financial", "revenue", "expense", "profit", "loss", "balance",
+                    "statement", "income", "cash", "flow", "database", "table", "data", "records", "entries"
+                ],
+                "fallback_priority": 0
+            },
+            "chat": {
+                "keywords": [],
+                "fallback_priority": 1
+            }
+        }
+    },
+    "mcp_servers": {}
+} 

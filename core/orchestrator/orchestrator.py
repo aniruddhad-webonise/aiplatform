@@ -86,65 +86,81 @@ class Orchestrator:
         # would be created dynamically using LangGraph based on configuration.
         self.workflow_instances[tenant_id] = {}
     
-    async def process_request(self, content: Any, tenant_id: str) -> Dict[str, Any]:
+    def _determine_agent(self, query: str, tenant_config: TenantConfig) -> str:
         """
-        Process a request from a client.
+        Determine which agent should handle the request based on the query content.
         
         Args:
-            content: The content of the request
-            tenant_id: The ID of the tenant making the request
+            query: The query string
+            tenant_config: Configuration for the tenant
             
         Returns:
-            The response to the request
+            The type of agent to use
         """
-        # Generate a request ID
-        request_id = str(uuid.uuid4())
+        # Check routing rules in order of priority
+        for rule in sorted(tenant_config.routing_rules, key=lambda x: x.get("priority", 0), reverse=True):
+            pattern = rule.get("pattern")
+            if pattern and re.search(pattern, query, re.IGNORECASE):
+                return rule["agent"]
         
-        # Get tenant configuration
-        tenant_config = self.config_manager.get_tenant_config(tenant_id)
-        if not tenant_config:
-            return {
-                "success": False,
-                "error": f"Unknown tenant: {tenant_id}"
-            }
-        
-        # Determine which agent or workflow to use
-        target_type, target_id = self._route_request(content, tenant_config)
-        
-        if target_type == "agent":
-            # Process with a single agent
-            if target_id not in self.agent_instances.get(tenant_id, {}):
-                return {
-                    "success": False,
-                    "error": f"Unknown agent: {target_id}"
-                }
+        # Default to chat agent if no rules match
+        return "chat"
+
+    async def process_request(self, query: str, tenant_id: str, additional_params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """Process a request for a specific tenant."""
+        try:
+            # Get tenant config
+            tenant_config = self.config_manager.get_tenant_config(tenant_id)
+            if not tenant_config:
+                raise ValueError(f"Tenant {tenant_id} not found")
             
-            agent = self.agent_instances[tenant_id][target_id]
-            response = await self._process_with_agent(agent, content, tenant_id, request_id)
+            # Determine which agent to use based on routing rules
+            agent_type = self._determine_agent(query, tenant_config)
+            
+            # Get or create agent instance
+            if tenant_id not in self.agent_instances:
+                self.agent_instances[tenant_id] = {}
+            
+            if agent_type not in self.agent_instances[tenant_id]:
+                # Create agent config
+                agent_config = AgentConfig(
+                    agent_type=AgentType(agent_type),
+                    model_name=tenant_config.agents[agent_type].get("model", "gpt-4o"),
+                    temperature=tenant_config.agents[agent_type].get("temperature", 0.0),
+                    max_tokens=tenant_config.agents[agent_type].get("max_tokens"),
+                    additional_params=tenant_config.agents[agent_type].get("additional_params", {})
+                )
+                
+                # Create agent
+                agent = AgentFactory.create(agent_config)
+                self.agent_instances[tenant_id][agent_type] = agent
+                logger.info(f"Created new agent instance for tenant {tenant_id}, type {agent_type}")
+            
+            # Get the agent instance
+            agent = self.agent_instances[tenant_id][agent_type]
+            
+            # Create request
+            request = AgentRequest(
+                content=query,
+                tenant_id=tenant_id,
+                request_id=str(uuid.uuid4())
+            )
+            
+            # Process request
+            response = await agent.process(request)
             
             return {
                 "success": response.success,
                 "content": response.content,
                 "error": response.error,
-                "metadata": response.metadata
+                "agent_type": agent_type
             }
             
-        elif target_type == "workflow":
-            # Process with a workflow
-            # Note: This is a placeholder. In a real implementation, this would
-            # execute a LangGraph workflow.
-            return {
-                "success": True,
-                "content": f"Workflow {target_id} would be executed here",
-                "metadata": {
-                    "workflow_id": target_id
-                }
-            }
-            
-        else:
+        except Exception as e:
+            logger.error(f"Error processing request: {str(e)}")
             return {
                 "success": False,
-                "error": "Could not determine appropriate agent or workflow for request"
+                "error": str(e)
             }
     
     def _route_request(self, content: Any, tenant_config: TenantConfig) -> Tuple[str, str]:
@@ -158,52 +174,27 @@ class Orchestrator:
         Returns:
             A tuple of (target_type, target_id)
         """
-        content_str = str(content).lower()
-        logger.info(f"Routing request: '{content_str}' for tenant: {tenant_config.tenant_id}")
-        routing_config = tenant_config.routing_config or {}
-        agent_rules = routing_config.get("agent_rules", {})
-
-        # Pattern-based routing
-        for rule in sorted(tenant_config.routing_rules, key=lambda x: x.get("priority", 0), reverse=True):
+        # Convert content to string for pattern matching
+        content_str = str(content)
+        
+        # Check routing rules in order
+        for rule in tenant_config.routing_rules:
             pattern = rule.get("pattern")
-            logger.info(f"Checking pattern rule: {pattern} for agent/workflow: {rule.get('agent') or rule.get('workflow')}")
-            if pattern:
-                try:
-                    if re.search(pattern, content_str, re.IGNORECASE):
-                        logger.info(f"Pattern matched: {pattern} -> Routing to: {rule.get('agent') or rule.get('workflow')}")
-                        if "workflow" in rule:
-                            return "workflow", rule["workflow"]
-                        elif "agent" in rule:
-                            return "agent", rule["agent"]
-                except re.error as e:
-                    logger.error(f"Invalid regex pattern in routing rule: {e}")
-                    continue
-
-        # Keyword-based routing
-        for agent_id, agent_rule in sorted(
-            agent_rules.items(),
-            key=lambda x: x[1].get("fallback_priority", 0),
-            reverse=True
-        ):
-            keywords = agent_rule.get("keywords", [])
-            logger.info(f"Checking keywords for agent '{agent_id}': {keywords}")
-            if any(keyword in content_str for keyword in keywords):
-                logger.info(f"Keyword matched for agent '{agent_id}' -> Routing to agent.")
-                if agent_id in tenant_config.agents:
-                    return "agent", agent_id
-
+            if pattern and re.search(pattern, content_str, re.IGNORECASE):
+                if "workflow" in rule:
+                    return "workflow", rule["workflow"]
+                elif "agent" in rule:
+                    return "agent", rule["agent"]
+        
         # Default to chat agent if available
         if "chat" in tenant_config.agents:
-            logger.info("No pattern or keyword matched. Routing to default chat agent.")
             return "agent", "chat"
-
+        
         # Fall back to the first available agent
         if tenant_config.agents:
-            fallback_agent = next(iter(tenant_config.agents.keys()))
-            logger.info(f"No chat agent found. Routing to first available agent: {fallback_agent}")
-            return "agent", fallback_agent
-
-        logger.error("No suitable agent or workflow found for request.")
+            return "agent", next(iter(tenant_config.agents.keys()))
+        
+        # No suitable target found
         return "unknown", "unknown"
     
     async def _process_with_agent(

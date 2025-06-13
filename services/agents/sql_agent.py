@@ -70,11 +70,18 @@ class SQLAgent(BaseAgent):
             tenant_id: The ID of the tenant
         """
         if self.mcp_server is None:
+            # Get MCP server config and schema config from additional params
+            mcp_params = self.config.additional_params.get("mcp_server", {})
+            schema_config = self.config.additional_params.get("schema_config", {})
+            
+            if not schema_config:
+                raise ValueError("Schema configuration is required in SQL agent config")
+            
             # Create MCP configuration
             self.mcp_config = MCPConfig(
-                mcp_type=self.mcp_params.get("type", "sqlite"),
-                connection_details=self.mcp_params.get("connection_details", {}),
-                additional_params=self.mcp_params.get("additional_params", {})
+                mcp_type=mcp_params.get("type", "sqlite"),
+                connection_details=mcp_params.get("connection_details", {}),
+                additional_params={"schema_config": schema_config}  # Pass schema_config as a nested parameter
             )
             
             # Create MCP server
@@ -99,21 +106,30 @@ class SQLAgent(BaseAgent):
             # Initialize MCP server if needed
             await self._ensure_mcp_server(tenant_id)
             
-            # Get database schema from MCP server
-            schema_request = MCPRequest(
-                query="SHOW SCHEMA",
-                tenant_id=tenant_id
-            )
-            schema_response = await self.mcp_server.query(schema_request)
+            # Get schema config from additional params
+            schema_config = self.config.additional_params.get("schema_config", {})
+            if not schema_config:
+                raise ValueError("Schema configuration is required in SQL agent config")
             
-            if not schema_response.success:
-                return AgentResponse(
-                    content=None,
-                    success=False,
-                    error=f"Failed to retrieve database schema: {schema_response.error}"
-                )
-            
-            schema = schema_response.content
+            # Build schema information from config
+            schema = {}
+            for table in schema_config.get("tables", []):
+                schema[table] = []
+                # Get column mappings for this table
+                table_mappings = schema_config.get("column_mappings", {}).get(table, {})
+                for natural_name, actual_name in table_mappings.items():
+                    # Determine data type from data_type_rules
+                    data_type = "text"  # default
+                    for type_name, columns in schema_config.get("data_type_rules", {}).items():
+                        if actual_name in columns:
+                            data_type = type_name
+                            break
+                    
+                    schema[table].append({
+                        'column_name': actual_name,
+                        'data_type': data_type,
+                        'is_nullable': True
+                    })
             
             # Generate SQL query from natural language
             sql_query = await self.chain.ainvoke({
