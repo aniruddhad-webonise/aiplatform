@@ -158,9 +158,8 @@ async def test_chat_agent(orchestrator: Orchestrator, tenant_id: str):
             "What are the three laws of robotics?"
         ],
         "zcg_affinity_g": [
-            "Explain what a balance sheet is",
-            "What is the difference between revenue and profit?",
-            "How do you calculate working capital?"
+            "What is the currency of USA",
+            "What is the Indian currency"
         ]
     }
     
@@ -230,7 +229,7 @@ async def test_tenant(tenant_id: str):
         orchestrator = Orchestrator(config_manager)
         
         # Run tests
-        #await test_chat_agent(orchestrator, tenant_id)
+        await test_chat_agent(orchestrator, tenant_id)
         await test_sql_agent(orchestrator, tenant_id)
         
     except Exception as e:
@@ -247,8 +246,8 @@ async def main():
         #await test_postgresql_mcp_server()
         
         # Test each tenant
-        #tenants = ["default", "zcg_affinity_g"]
-        tenants = ["zcg_affinity_g"]
+        tenants = ["default", "zcg_affinity_g"]
+        #tenants = ["zcg_affinity_g"]
         for tenant_id in tenants:
             await test_tenant(tenant_id)
             
