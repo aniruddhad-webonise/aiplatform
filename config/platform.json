@@ -1,0 +1,27 @@
+{
+    "version": "0.1.0",
+    "environment": "development",
+    "logging": {
+        "level": "INFO",
+        "format": "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    },
+    "agent_registrations": [
+        {
+            "agent_type": "chat",
+            "module_path": "aiplatform.services.agents.chat_agent",
+            "class_name": "ChatAgent"
+        },
+        {
+            "agent_type": "sql",
+            "module_path": "aiplatform.services.agents.sql_agent",
+            "class_name": "SQLAgent"
+        }
+    ],
+    "mcp_registrations": [
+        {
+            "mcp_type": "sqlite",
+            "module_path": "aiplatform.services.mcp.sqlite_mcp",
+            "class_name": "SQLiteMCPServer"
+        }
+    ]
+} 

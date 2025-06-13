@@ -1,0 +1,58 @@
+{
+    "tenant_id": "default",
+    "name": "Default Tenant",
+    "agents": {
+        "chat": {
+            "type": "chat",
+            "model": "gpt-4",
+            "temperature": 0.2,
+            "additional_params": {
+                "system_prompt": "You are a helpful AI assistant. Provide clear, concise, and accurate responses to the user's questions."
+            }
+        },
+        "sql": {
+            "type": "sql",
+            "model": "gpt-4",
+            "temperature": 0.0,
+            "additional_params": {
+                "mcp_server": {
+                    "type": "sqlite",
+                    "connection_details": {
+                        "database": "example.db"
+                    }
+                }
+            }
+        }
+    },
+    "workflows": {},
+    "routing_rules": [
+        {
+            "pattern": "(?i).*(show|list|find|get|select|query|search|display|fetch|retrieve|count|sum|total|amount|price|cost|less than|more than|between|where|from|users?|products?|orders?|items?|database|table|data|records?|entries?).*",
+            "agent": "sql",
+            "priority": 1
+        },
+        {
+            "pattern": ".*",
+            "agent": "chat",
+            "priority": 0
+        }
+    ],
+    "routing_config": {
+        "agent_rules": {
+            "sql": {
+                "keywords": [
+                    "show", "list", "find", "get", "select", "query", "search", "display", "fetch", "retrieve",
+                    "count", "sum", "total", "amount", "price", "cost", "less than", "more than", "between",
+                    "where", "from", "users", "products", "orders", "items", "database", "table", "data",
+                    "records", "entries"
+                ],
+                "fallback_priority": 0
+            },
+            "chat": {
+                "keywords": [],
+                "fallback_priority": 1
+            }
+        }
+    },
+    "mcp_servers": {}
+} 
